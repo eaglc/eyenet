@@ -1,7 +1,7 @@
 
 
-#ifndef __EYE_CORE_H__
-#define __EYE_CORE_H__
+#ifndef __EYE_ERRNO_H__
+#define __EYE_ERRNO_H__
 
 
 #include "eye_core.h"

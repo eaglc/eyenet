@@ -97,17 +97,18 @@ static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec
 			revents | = EPOLLIN|EPOLLOUT;
 		}
 
+		// todo: support post event.
 		if ((revents & EPOLLIN) && rev->active) {
 			rev->handler(rev);
+		}
+
+		if (c->fd == -1) {
+			continue;
 		}
 
 		wev = c->write;
 
 		if ((revents & EPOLLOUT) && wev->active) {
-			if (c->fd == -1) {
-				continue;
-			}
-
 			wev->handler(wev);
 		}
 	}
@@ -197,7 +198,6 @@ static eye_int_t eye_event_module_epoll_del_event(eye_event_loop_t *loop, eye_ev
 
 static eye_int_t eye_event_module_epoll_done(eye_event_loop_t *loop)
 {
-
 	eye_event_module_epoll_ctx_destroy((struct eye_event_module_epoll_ctx *)loop->module_ctx);
 	loop->module_ctx = NULL;
 }

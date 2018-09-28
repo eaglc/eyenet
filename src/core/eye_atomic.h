@@ -1,8 +1,10 @@
 #ifndef __EYE_ATOMIC_H__
-
+#define __EYE_ATOMIC_H__
 
 #include "eye_core.h"
 
+#include <stdint.h>
+#include <inttypes.h>
 
 #define eye_cpu_pause()
 
@@ -24,4 +26,12 @@ typedef unsigned long					eye_atomic_uint_t;
 typedef volatile eye_atomic_uint_t 		eye_atomic_t;
 
 
-#define __EYE_ATOMIC_H__
+#if (EYE_PTR_SIZE == 8)
+#define EYE_ATOMIC_T_LEN            (sizeof("-9223372036854775808") - 1)
+#else
+#define EYE_ATOMIC_T_LEN            (sizeof("-2147483648") - 1)
+#endif
+
+
+
+#endif

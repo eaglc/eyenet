@@ -1,24 +1,32 @@
 
+
 #include "eye_core.h"
 #include "eye_event.h"
-
-#include <sys/epoll.h>
+#include "eye_event_loop.h"
 
 
 #define EYE_EVENT_LIST_SIZE 512
 
-static eye_int_t eye_event_module_epoll_add_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event);
-static eye_int_t eye_event_module_epoll_del_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event);
-static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec_t timer);
+static eye_int_t eye_event_module_epoll_add_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event, eye_uint_t flags);
+static eye_int_t eye_event_module_epoll_del_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event, eye_uint_t flags);
+static eye_int_t eye_event_module_epoll_add_conn(eye_event_loop_t *loop, eye_net_connection_t *c);
+static eye_int_t eye_event_module_epoll_del_conn(eye_event_loop_t *loop, eye_net_connection_t *c, eye_uint_t flags);
+static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec_t timer, eye_uint_t flags);
 static eye_int_t eye_event_module_epoll_init(eye_event_loop_t *loop);
 static eye_int_t eye_event_module_epoll_done(eye_event_loop_t *loop);
 
-static struct eye_event_actions_t epoll_actions = 
+// convert from eye_x_event to epoll event.
+static uint32_t eye_event_module_epoll_flags(eye_uint_t flags);
+
+
+struct eye_event_actions_s eye_event_actions = 
 {
 	eye_event_module_epoll_add_event,
 	eye_event_module_epoll_del_event,
 	eye_event_module_epoll_add_event,
 	eye_event_module_epoll_del_event,
+	eye_event_module_epoll_add_conn,
+	eye_event_module_epoll_del_conn,
 	eye_event_module_epoll_process,
 	eye_event_module_epoll_init,
 	eye_event_module_epoll_done
@@ -36,6 +44,21 @@ int 								eye_event_module_epoll_ctx_epfd(struct eye_event_module_epoll_ctx *c
 void 								eye_event_module_epoll_ctx_destroy(struct eye_event_module_epoll_ctx *ctx);
 
 
+static uint32_t eye_event_module_epoll_flags(eye_uint_t flags)
+{
+	uint32_t evs = 0;
+
+	if (flags & EYE_EVENT_CLEAR) {
+		evs |= EPOLLET;
+	}
+
+	if (flags & EYE_EVENT_ONESHOT) {
+		evs |= EPOLLONESHOT;
+	}
+
+	return evs;
+}
+
 static eye_int_t eye_event_module_epoll_init(eye_event_loop_t *loop)
 {
 	struct eye_event_module_epoll_ctx *ctx;
@@ -47,12 +70,13 @@ static eye_int_t eye_event_module_epoll_init(eye_event_loop_t *loop)
 	}
 
 	loop->module_ctx = (void *)ctx;
-	loop->actions = epoll_actions;
+
+	eye_event_flags = EYE_USE_CLEAR_EVENT;
 
 	return EYE_OK;
 }
 
-static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec_t timer)
+static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec_t timer, eye_uint_t flags)
 {
 	int 					i;
 	int 					events;
@@ -62,7 +86,7 @@ static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec
 	eye_err_t 				err;
 	eye_event_t 			*rev;
 	eye_event_t 			*wev;
-	eye_event_carrier_t 	*c;
+	eye_net_connection_t 	*c;
 
 	epfd = eye_event_module_epoll_ctx_epfd((struct eye_event_module_epoll_ctx *) loop->module_ctx);
 	event_list = eye_event_module_epoll_ctx_event_list((struct eye_event_module_epoll_ctx *) loop->module_ctx);
@@ -94,11 +118,18 @@ static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec
 		revents = event_list[i].events;
 
 		if (revents & (EPOLLERR|EPOLLHUP)) {
-			revents | = EPOLLIN|EPOLLOUT;
+			revents |= EPOLLIN|EPOLLOUT;
 		}
 
 		// todo: support post event.
 		if ((revents & EPOLLIN) && rev->active) {
+
+			if (revents & EPOLLRDHUP) {
+                rev->pending_eof = 1;
+			}
+            rev->available = 1;
+            rev->ready = 1;
+
 			rev->handler(rev);
 		}
 
@@ -108,6 +139,8 @@ static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec
 
 		wev = c->write;
 
+        wev->ready = 1;
+
 		if ((revents & EPOLLOUT) && wev->active) {
 			wev->handler(wev);
 		}
@@ -116,12 +149,12 @@ static eye_int_t eye_event_module_epoll_process(eye_event_loop_t *loop, eye_msec
 	return EYE_OK;
 }
 
-static eye_int_t eye_event_module_epoll_add_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event)
+static eye_int_t eye_event_module_epoll_add_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event, eye_uint_t flags)
 {
 	int 					op;
 	uint32_t 				events, prev;
 	int 					epfd;
-	eye_event_carrier_t	   	*c;
+	eye_net_connection_t	   	*c;
 	eye_event_t 			*e;
 	struct epoll_event 		ee;
 
@@ -129,12 +162,12 @@ static eye_int_t eye_event_module_epoll_add_event(eye_event_loop_t *loop, eye_ev
 	c = ev->data;
 
 	if (event == EYE_EVENT_READ) {
-		e = c->wev;
+		e = c->write;
 		prev = EPOLLOUT;
-		events = EPOLLIN|EPOLLRDHUP|EPOLLET;
+		events = EPOLLIN|EPOLLRDHUP;
 	} else {
-		e = c->rev;
-		prev = EPOLLIN|EPOLLRDHUP|EPOLLET;
+		e = c->read;
+		prev = EPOLLIN|EPOLLRDHUP;
 		events = EPOLLOUT;
 	}
 
@@ -145,7 +178,7 @@ static eye_int_t eye_event_module_epoll_add_event(eye_event_loop_t *loop, eye_ev
 		op = EPOLL_CTL_ADD;
 	}
 
-	ee.events = events;
+	ee.events = events | eye_event_module_epoll_flags(flags);
 	ee.data.ptr = (void *)c;
 
 	if (epoll_ctl(epfd, op, c->fd, &ee) == -1) {
@@ -157,14 +190,19 @@ static eye_int_t eye_event_module_epoll_add_event(eye_event_loop_t *loop, eye_ev
 	return EYE_OK;
 }
 
-static eye_int_t eye_event_module_epoll_del_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event)
+static eye_int_t eye_event_module_epoll_del_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event, eye_uint_t flags)
 {
 	int 					op;
 	uint32_t				prev;
 	int 					epfd;
 	eye_event_t 			*e;
-	eye_event_carrier_t 	*c;
+	eye_net_connection_t 	*c;
 	struct epoll_event 		ee;
+
+	if (flags & EYE_EVENT_CLOSE) {
+		ev->active = 0;
+		return EYE_OK;
+	}
 
 	epfd = eye_event_module_epoll_ctx_epfd((struct eye_event_module_epoll_ctx *)loop->module_ctx);
 	c = ev->data;
@@ -174,12 +212,12 @@ static eye_int_t eye_event_module_epoll_del_event(eye_event_loop_t *loop, eye_ev
 		prev = EPOLLOUT;
 	} else {
 		e = c->read;
-		prev = EPOLLIN|EPOLLRDHUP|EPOLLET;
+		prev = EPOLLIN|EPOLLRDHUP;
 	}
 
 	if (e->active) {
 		op = EPOLL_CTL_MOD;
-		ee.events = prev;
+		ee.events = prev | eye_event_module_epoll_flags(flags);
 		ee.data.ptr = (void *)c;
 	} else {
 		op = EPOLL_CTL_DEL;
@@ -196,17 +234,65 @@ static eye_int_t eye_event_module_epoll_del_event(eye_event_loop_t *loop, eye_ev
 	return EYE_OK;
 }
 
+static eye_int_t eye_event_module_epoll_add_conn(eye_event_loop_t *loop, eye_net_connection_t *c)
+{
+	struct epoll_event 	ee;
+	int 				epfd;
+
+	epfd = eye_event_module_epoll_ctx_epfd((struct eye_event_module_epoll_ctx *)loop->module_ctx);
+
+	ee.events = EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP;
+	ee.data.ptr = (void *)c;
+
+	if (epoll_ctl(epfd, EPOLL_CTL_ADD, c->fd, &ee) == -1) {
+		return EYE_ERROR;
+	}
+
+	c->read->active = 1;
+	c->write->active = 1;
+
+	return EYE_OK;
+}
+
+static eye_int_t eye_event_module_epoll_del_conn(eye_event_loop_t *loop, eye_net_connection_t *c, eye_uint_t flags)
+{
+	struct epoll_event 	ee;
+	int 				epfd;
+
+	if (flags & EYE_EVENT_CLOSE) {
+		c->read->active = 0;
+		c->write->active = 0;
+		return EYE_OK;
+	}
+
+	epfd = eye_event_module_epoll_ctx_epfd((struct eye_event_module_epoll_ctx *)loop->module_ctx);
+
+	ee.events = 0;
+	ee.data.ptr = NULL;
+
+	if (epoll_ctl(epfd, EPOLL_CTL_DEL, c->fd, &ee) == -1) {
+		return EYE_ERROR;
+	}
+
+	c->read->active = 0;
+	c->write->active = 0;
+
+	return EYE_OK;
+}
+
 static eye_int_t eye_event_module_epoll_done(eye_event_loop_t *loop)
 {
 	eye_event_module_epoll_ctx_destroy((struct eye_event_module_epoll_ctx *)loop->module_ctx);
 	loop->module_ctx = NULL;
+
+	return EYE_OK;
 }
 
 struct eye_event_module_epoll_ctx *eye_event_module_epoll_ctx_init()
 {
 	struct eye_event_module_epoll_ctx *ctx;
-	ctx = (eye_event_module_epoll_ctx *)malloc(sizeof(eye_event_module_epoll_ctx));
-	memset(ctx, 0, sizeof(eye_event_module_epoll_ctx));
+	ctx = (struct eye_event_module_epoll_ctx *)eye_alloc(sizeof(struct eye_event_module_epoll_ctx));
+	memset(ctx, 0, sizeof(struct eye_event_module_epoll_ctx));
 
 	ctx->epfd = -1;
 
@@ -223,7 +309,7 @@ struct eye_event_module_epoll_ctx *eye_event_module_epoll_ctx_init()
 
 struct epoll_event *eye_event_module_epoll_ctx_event_list(struct eye_event_module_epoll_ctx *ctx)
 {
-	return &ctx->event_list;
+	return ctx->event_list;
 }
 
 int eye_event_module_epoll_ctx_epfd(struct eye_event_module_epoll_ctx *ctx)
@@ -237,7 +323,7 @@ void eye_event_module_epoll_ctx_destroy(struct eye_event_module_epoll_ctx *ctx)
 		close(ctx->epfd);
 	}
 
-	free(ctx);
+	eye_free(ctx);
 }
 
 

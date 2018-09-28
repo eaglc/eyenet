@@ -1,9 +1,11 @@
 
+
 #include "eye_core.h"
 
-void eye_spinlock(eye_atomic_t *lock, eye_atomic_int_t value, eys_uint_t spin)
+
+void eye_spinlock(eye_atomic_t *lock, eye_atomic_int_t value, eye_uint_t spin)
 {
-    ngx_uint_t  i, n;
+    eye_uint_t  i, n;
 
     for ( ;; ) {
 
@@ -11,7 +13,7 @@ void eye_spinlock(eye_atomic_t *lock, eye_atomic_int_t value, eys_uint_t spin)
             return;
         }
 
-        if (ngx_ncpu > 1) {
+        if (eye_ncpu > 1) {
 
             for (n = 1; n < spin; n <<= 1) {
 

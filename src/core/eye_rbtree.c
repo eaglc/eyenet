@@ -1,11 +1,11 @@
 
 
-#include "eye_rbtree.h"
+#include "eye_core.h"
 
 
-static inline void eye_rbtree_left_rotate(eye_rbtree_node_t **root,
+static eye_inline void eye_rbtree_left_rotate(eye_rbtree_node_t **root,
     eye_rbtree_node_t *sentinel, eye_rbtree_node_t *node);
-static inline void eye_rbtree_right_rotate(eye_rbtree_node_t **root,
+static eye_inline void eye_rbtree_right_rotate(eye_rbtree_node_t **root,
     eye_rbtree_node_t *sentinel, eye_rbtree_node_t *node);
 
 
@@ -275,7 +275,7 @@ eye_rbtree_left_rotate(eye_rbtree_node_t **root, eye_rbtree_node_t *sentinel,
 }
 
 
-static inline void
+static eye_inline void
 eye_rbtree_right_rotate(eye_rbtree_node_t **root, eye_rbtree_node_t *sentinel,
     eye_rbtree_node_t *node)
 {

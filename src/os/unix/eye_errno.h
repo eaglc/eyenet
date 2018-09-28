@@ -60,3 +60,5 @@ typedef int               eye_err_t;
 
 // u_char *eye_strerror(eye_err_t err, u_char *errstr, size_t size);
 // eye_int_t eye_strerror_init(void);
+
+#endif

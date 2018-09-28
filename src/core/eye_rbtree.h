@@ -7,7 +7,9 @@
 
 #define  eye_cast(type, p)	((type)(p))
 
-struct eye_rbtree_node_t {
+typedef struct eye_rbtree_node_s	eye_rbtree_node_t;
+
+struct eye_rbtree_node_s {
 	eye_rbtree_node_t	*left;
 	eye_rbtree_node_t	*right;
 	eye_rbtree_node_t	*parent;
@@ -17,18 +19,21 @@ struct eye_rbtree_node_t {
 typedef struct eye_rbtree_s	eye_rbtree_t;
 
 typedef void (*eye_rbtree_insert_pt) (eye_rbtree_t *rbt, eye_rbtree_node_t *node);
+typedef int (*eye_rbtree_compare_pt) (eye_rbtree_node_t *node1, eye_rbtree_node_t *node2);
 
 struct eye_rbtree_s {
-	eye_rbtree_node_t		*root;
-	eye_rbtree_node_t		*sentinel;
-	eye_rbtree_insert_pt	 insert;
+	eye_rbtree_node_t			*root;
+	eye_rbtree_node_t			*sentinel;
+	eye_rbtree_insert_pt	 	 insert;
+	eye_rbtree_compare_pt		 compare;
 };
 
-#define eye_rbtree_init(tree, s, i)                                           \
-	eye_rbtree_sentinel_init(s);                                              \
-	(tree)->root = s;                                                         \
-	(tree)->sentinel = s;                                                     \
-	(tree)->insert = i
+#define eye_rbtree_init(tree, s, i, c)											\
+	eye_rbtree_sentinel_init(s);                                              	\
+	(tree)->root = s;                                                         	\
+	(tree)->sentinel = s;                                                     	\
+	(tree)->insert = i;															\
+	(tree)->compare = c;
 
 
 void eye_rbtree_insert(eye_rbtree_t *tree, eye_rbtree_node_t *node);
@@ -45,7 +50,7 @@ eye_rbtree_node_t *eye_rbtree_next(eye_rbtree_t *tree,
 #define eye_rbtree_sentinel_init(node)  { eye_rbt_black(node); }
 
 
-static inline eye_rbtree_node_t *
+static eye_inline eye_rbtree_node_t *
 	eye_rbtree_min(eye_rbtree_node_t *node, eye_rbtree_node_t *sentinel)
 {
 	while (node->left != sentinel) {
@@ -55,7 +60,7 @@ static inline eye_rbtree_node_t *
 	return node;
 }
 
-static inline void
+static eye_inline void
 	eye_rbtree_replace(eye_rbtree_t *rbt, eye_rbtree_node_t *old, eye_rbtree_node_t *newnode)
 {
 	eye_rbtree_node_t *parent = old->parent;
@@ -84,5 +89,38 @@ static inline void
 
 	newnode->parent = parent;
 }
+
+static eye_inline void 
+	eye_default_rbtree_insert_value(eye_rbtree_t *rbt, eye_rbtree_node_t *node)
+{
+	eye_rbtree_node_t  **root, *sentinel;
+	eye_rbtree_node_t	**p;
+	eye_rbtree_node_t	*tmp;
+
+    root = &rbt->root;
+    sentinel = rbt->sentinel;
+
+    tmp = *root;
+
+	for ( ;; ) {
+
+		p = rbt->compare(tmp, node) < 0 ? &tmp->left : &tmp->right;
+
+		if (*p == sentinel) {
+			break;
+		}
+
+		tmp = *p;
+	}
+
+	*p = node;
+	node->parent = tmp;
+	node->left = sentinel;
+	node->right = sentinel;
+	eye_rbt_red(node);
+}
+
+
+// todo: 遍历以及查找
 
 #endif

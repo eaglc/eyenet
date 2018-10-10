@@ -9,6 +9,7 @@ u_char *ip = (u_char *)"127.0.0.1:17001";
 void on_connected(eye_net_connection_t *c);
 void on_data(eye_event_t *ev);
 void on_write(eye_event_t *ev);
+void on_closed(eye_net_connection_t *c);
 
 int main()
 {
@@ -39,6 +40,9 @@ int main()
 		perror("eye_create_listening failure\n");
 		return -4;
 	}
+
+	// init ls
+	ls->pool_size = 256;
 	ls->handler = on_connected;
 
 	eye_configure_listening_sockets(loop);
@@ -69,7 +73,7 @@ void on_connected(eye_net_connection_t *c)
 
 	if (eye_handle_read_event(c->listening->loop, c->read, 0) != EYE_OK) {
 		printf("eye_handle_read_event error\n");
-		eye_close_connection(c);
+		on_closed(c);
 	}
 
 	// c->write->ready = 0;
@@ -94,7 +98,7 @@ void on_data(eye_event_t *ev)
 
 	c = (eye_net_connection_t *) ev->data;
 	loop = c->listening->loop;
-	pool = loop->pool;
+	pool = c->pool;
 
 	if (c->buffer == NULL) {
 		c->buffer = eye_create_buf(pool, 1024);
@@ -111,9 +115,9 @@ void on_data(eye_event_t *ev)
 			n = c->recv(c, buf->last, size);
 
 			if (n == EYE_AGAIN) {
-				if (eye_handle_read_event(c->listening->loop, c->read, 0) != EYE_OK) {
+				if (eye_handle_read_event(loop, c->read, 0) != EYE_OK) {
 					printf("on_data eye_handle_read_event error\n");
-					eye_close_connection(c);
+					on_closed(c);
 					return;
 				}
 				printf("on_data EYE_EAGAIN\n");
@@ -150,9 +154,9 @@ void on_data(eye_event_t *ev)
 		}
 
 		if (n == EYE_AGAIN) {
-			if (eye_handle_write_event(c->listening->loop, c->write) != EYE_OK) {
+			if (eye_handle_write_event(loop, c->write) != EYE_OK) {
 				printf("on_data eye_handle_write_event\n");
-				eye_close_connection(c);
+				on_closed(c);
 				return;
 			}
 		}
@@ -160,11 +164,19 @@ void on_data(eye_event_t *ev)
 
 	if (ev->eof) {
 		printf("on_data eof\n");
-		eye_close_connection(c);
+		on_closed(c);
 	}
 }
 
 void on_write(eye_event_t *ev)
 {
 	printf("on_write\n");
+}
+
+void on_closed(eye_net_connection_t *c)
+{
+	printf("on_closed\n");
+	eye_close_connection(c);
+	printf("on_closed pool:%p\n", c->pool);
+	eye_destroy_pool(c->pool);
 }

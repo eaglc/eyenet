@@ -38,21 +38,21 @@ void
 	eye_pool_large_t	*l;
 	eye_pool_cleanup_t	*c;
 
-	// ÏÈÖ´ĞĞcleanup
+	// å…ˆæ‰§è¡Œcleanup
 	for (c = pool->cleanup; c; c = c->next) {
 		if (c->handler) {
 			c->handler(c->data);
 		}
 	}
 
-	// ÊÍ·Å´ó¿éÄÚ´æ
+	// é‡Šæ”¾å¤§å—å†…å­˜
 	for (l = pool->large; l; l = l->next) {
 		if (l->alloc) {
 			eye_free(l->alloc);
 		}
 	}
 
-	// ÊÍ·ÅÄÚ´æ³ØÄÚ´æ
+	// é‡Šæ”¾å†…å­˜æ± å†…å­˜
 	for (p = pool, n = pool->d.next; ; p = n, n = n->d.next) {
 		eye_free(p);
 
@@ -66,7 +66,7 @@ void
 void 
 	eye_reset_pool(eye_pool_t *pool)
 {
-	// ÊÍ·Å´ó¿éÄÚ´æ²¢±ê¼ÇÄÚ´æ³Ø¿ÉÓÃ
+	// é‡Šæ”¾å¤§å—å†…å­˜å¹¶æ ‡è®°å†…å­˜æ± å¯ç”¨
 	eye_pool_t			*p;
 	eye_pool_large_t	*l;
 

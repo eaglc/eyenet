@@ -4,6 +4,7 @@
 #include "eye_event.h"
 #include "eye_event_timer.h"
 
+static void * loop_in_thread(void *data);
 
 eye_event_loop_t *eye_event_loop_init(eye_uint_t ls_n)
 {
@@ -131,6 +132,7 @@ void eye_event_loop_start(eye_event_loop_t *loop)
 {
 	eye_msec_t		timer;
 	
+	loop->pid = eye_pthread_self();
 	loop->running = 1;
 
 	while (loop->running) {
@@ -146,6 +148,11 @@ void eye_event_loop_start(eye_event_loop_t *loop)
 	}
 }
 
+
+void eye_event_loop_start_thread(eye_event_loop_t *loop)
+{
+	eye_pthread_create(&loop->pid, NULL, loop_in_thread, loop);
+}
 
 void eye_event_loop_join(eye_event_loop_t *loop)
 {
@@ -184,4 +191,15 @@ void eye_event_loop_destroy(eye_event_loop_t *loop)
 void eye_event_loop_shutdown(eye_event_loop_t *loop)
 {
 	loop->running = 0;
+}
+
+static void * loop_in_thread(void *data)
+{
+	eye_event_loop_t *loop;
+
+	loop = (eye_event_loop_t *) data;
+
+	eye_event_loop_start(loop);
+
+	return 0;
 }

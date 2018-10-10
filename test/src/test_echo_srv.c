@@ -53,7 +53,8 @@ int main()
 		return -5;
 	}
 
-	eye_event_loop_start(loop);
+	//eye_event_loop_start(loop);
+	eye_event_loop_start_thread(loop);
 	eye_event_loop_join(loop);
 
 	return 0;

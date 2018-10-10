@@ -14,6 +14,7 @@ typedef void *(*eye_thread_handler_pt) (void *);
 #define eye_pthread_create(thread, attr, routine, arg) pthread_create(thread, attr, routine, arg) 
 #define eye_pthread_join(thread, retval) pthread_join(thread, retval)
 #define eye_pthread_exit(retval) pthread_exit(retval)
+#define eye_pthread_self() pthread_self()
 
 
 #endif

@@ -38,6 +38,7 @@ struct eye_event_loop_s {
 eye_event_loop_t *eye_event_loop_init(eye_uint_t ls_n);
 eye_int_t eye_event_loop_worker_init(eye_event_loop_t *loop, eye_uint_t c_n);
 void eye_event_loop_start(eye_event_loop_t *loop);
+void eye_event_loop_start_thread(eye_event_loop_t *loop);
 void eye_event_loop_join(eye_event_loop_t *loop);
 void eye_event_loop_destroy(eye_event_loop_t *loop);
 void eye_event_loop_shutdown(eye_event_loop_t *loop);

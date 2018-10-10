@@ -28,6 +28,7 @@ in_addr_t eye_inet_addr(u_char *text, size_t len)
 
 		if (c == '.') {
 			addr = (addr << 8) + octet;
+			octet = 0;
 			n++;
 			continue;
 		}
@@ -363,4 +364,116 @@ void eye_inet_set_port(struct sockaddr *sa, in_port_t port)
 		sin->sin_port = htons(port);
 		break;
 	}
+}
+
+
+eye_int_t eye_parse_addr(eye_pool_t *pool, eye_addr_t *addr, u_char *text, size_t len)
+{
+	in_addr_t			 	 inaddr;
+	eye_uint_t			 	 family;
+	struct sockaddr_in		*sin;
+
+#if (EYE_HAVE_INET6)
+	struct in6_addr			 inaddr6;
+	struct sockaddr_in6		*sin6;
+
+	eye_memzero(&inaddr6, sizeof(struct in6_addr));
+#endif
+
+	inaddr = eye_inet_addr(text, len);
+
+	if (inaddr != INADDR_NONE) {
+		family = AF_INET;
+		len = sizeof(struct sockaddr_in);
+#if (EYE_HAVE_INET6)
+	} else if (eye_inet6_addr(text, len, inaddr6.s6_addr) == EYE_OK) {
+		family = AF_INET6;
+		len = sizeof(struct sockaddr_in6);
+#endif
+	} else {
+		return EYE_DECLINED;
+	}
+
+	addr->sockaddr = eye_pcalloc(pool, len);
+	if (addr->sockaddr == NULL) {
+		return EYE_ERROR;
+	}
+
+	addr->sockaddr->sa_family = (u_char) family;
+	addr->socklen = len;
+
+	switch (family) {
+
+#if (EYE_HAVE_INET6)
+	case AF_INET6:
+		sin6 = (struct sockaddr_in6 *) addr->sockaddr;
+		eye_memcpy(sin6->sin6_addr.s6_addr, inaddr6.s6_addr, 16);
+		break; 
+#endif
+
+	default:
+		sin = (struct sockaddr_in *) addr->sockaddr;
+		sin->sin_addr.s_addr = inaddr;
+		break;
+	}
+
+	return EYE_OK;
+}
+
+
+eye_int_t eye_parse_addr_port(eye_pool_t *pool, eye_addr_t *addr, u_char *text, size_t len)
+{
+	u_char			*p, *last;
+	size_t			 plen;
+	eye_int_t		 rc, port;
+
+	rc = eye_parse_addr(pool, addr, text, len);
+
+	if (rc != EYE_DECLINED) {
+		return rc;
+	}
+
+	last = text + len;
+
+#if (EYE_HAVE_INET6)
+	if (len && text[0] == '[') {
+
+		p = eye_strlchr(text, last, ']');
+
+		if (p == NULL || p == last - 1 || *++p != ':') {
+			return EYE_DECLINED;
+		}
+
+		text++;
+		len -= 2;
+	} else 
+#endif
+	{
+		p = eye_strlchr(text, last, ':');
+
+		if (p == NULL) {
+			return EYE_DECLINED;
+		}
+	}
+
+	p++;
+	plen = last - p;
+
+	port = eye_atoi(p, plen);
+
+	if (port < 1 || port > 65535) {
+		return EYE_DECLINED;
+	}
+
+	len -= plen + 1;
+
+	rc = eye_parse_addr(pool, addr, text, len);
+
+	if (rc != EYE_OK) {
+		return rc;
+	}
+
+	eye_inet_set_port(addr->sockaddr, (in_port_t) port);
+
+	return EYE_OK;
 }

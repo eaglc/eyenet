@@ -39,6 +39,7 @@ struct eye_net_connection_s {
     unsigned            destroyed:1;
 
     unsigned            close:1;
+    unsigned            shared:1;   //shared between threads or processes
 };
 
 

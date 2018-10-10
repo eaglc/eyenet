@@ -29,6 +29,7 @@ eye_int_t eye_os_init();
 
 
 extern eye_int_t	eye_ncpu;
+extern eye_os_io_t  eye_os_io;
 
 
 ssize_t eye_unix_recv(eye_net_connection_t *c, u_char *buf, size_t size);

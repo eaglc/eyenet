@@ -7,6 +7,8 @@
 
 #define EYE_EVENT_LIST_SIZE 512
 
+eye_os_io_t	eye_io;
+
 static eye_int_t eye_event_module_epoll_add_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event, eye_uint_t flags);
 static eye_int_t eye_event_module_epoll_del_event(eye_event_loop_t *loop, eye_event_t *ev, eye_int_t event, eye_uint_t flags);
 static eye_int_t eye_event_module_epoll_add_conn(eye_event_loop_t *loop, eye_net_connection_t *c);
@@ -17,7 +19,6 @@ static eye_int_t eye_event_module_epoll_done(eye_event_loop_t *loop);
 
 // convert from eye_x_event to epoll event.
 static uint32_t eye_event_module_epoll_flags(eye_uint_t flags);
-
 
 struct eye_event_actions_s eye_event_actions = 
 {
@@ -72,6 +73,8 @@ static eye_int_t eye_event_module_epoll_init(eye_event_loop_t *loop)
 	loop->module_ctx = (void *)ctx;
 
 	eye_event_flags = EYE_USE_CLEAR_EVENT;
+
+	eye_io = eye_os_io;
 
 	return EYE_OK;
 }

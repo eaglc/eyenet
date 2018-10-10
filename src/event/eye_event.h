@@ -93,6 +93,9 @@ extern struct eye_event_actions_s eye_event_actions;
 #define eye_add_conn         	eye_event_actions.add_conn
 #define eye_del_conn         	eye_event_actions.del_conn
 
+#define eye_add_timer        	eye_event_add_timer
+#define eye_del_timer        	eye_event_del_timer
+
 extern eye_uint_t             	eye_event_flags;
 
 extern eye_os_io_t	eye_io;

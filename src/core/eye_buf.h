@@ -8,10 +8,10 @@
 typedef struct eye_buf_s 	eye_buf_t;
 
 struct eye_buf_s {
-	char *start;
-	char *end;
-	char *pos;
-	char *last;
+	u_char *start;
+	u_char *end;
+	u_char *pos;
+	u_char *last;
 };
 
 //

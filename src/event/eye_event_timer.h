@@ -3,6 +3,7 @@
 
 
 #include "eye_core.h"
+#include "eye_event.h"
 
 
 #define EYE_TIMER_INFINITE		(eye_msec_t) -1
@@ -37,6 +38,40 @@ static eye_inline int eye_rbtree_node_timer_compare(eye_rbtree_node_t *node1, ey
 	}
 
 	return 0;
+}
+
+static eye_inline void eye_event_del_timer(eye_rbtree_t *rtb, eye_event_t *ev)
+{
+	eye_rbtree_delete(rtb, &ev->timer);
+
+	ev->timer_set = 0;
+}
+
+static eye_inline void eye_event_add_timer(eye_rbtree_t *rbt, eye_event_t *ev, eye_msec_t timer)
+{
+	eye_msec_t			eye_current_msec;
+	eye_msec_t			key;
+	eye_msec_int_t		diff;
+
+	eye_current_msec = eye_monotonic_time(0, 0);
+
+	key = eye_current_msec + timer;
+
+	if (ev->timer_set) {
+		diff = (eye_msec_int_t) (key - eye_cast(eye_rbtree_node_timer_t *, &ev->timer)->key);
+
+		if (eye_abs(diff) < EYE_TIMER_LAZY_DELAY) {
+			return;
+		}
+
+		eye_del_timer(rbt, ev);
+	}
+
+	eye_cast(eye_rbtree_node_timer_t *, &ev->timer)->key = key;
+
+	eye_rbtree_insert(rbt, &ev->timer);
+
+	ev->timer_set = 1;
 }
 
 

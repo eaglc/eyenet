@@ -39,7 +39,7 @@ typedef struct eye_net_listening_s		eye_net_listening_t;
 #include "eye_alloc.h"
 #include "eye_palloc.h"
 #include "eye_pthread.h"
-#include "eye_event_timer.h"
+//#include "eye_event_timer.h"
 #include "eye_event_loop.h"
 #include "eye_event_loop_thread.h"
 #include "eye_inet.h"

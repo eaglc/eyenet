@@ -2,6 +2,7 @@
 
 #include "eye_core.h"
 #include "eye_event.h"
+#include "eye_event_timer.h"
 
 
 eye_event_loop_t *eye_event_loop_init(eye_uint_t ls_n)
@@ -37,8 +38,7 @@ eye_event_loop_t *eye_event_loop_init(eye_uint_t ls_n)
 		return NULL;
 	}
 
-	eye_memzero(&loop->listening.elts, loop->listening_n * sizeof(eye_net_listening_t));
-
+	eye_memzero(loop->listening.elts, loop->listening_n * sizeof(eye_net_listening_t));
 
 	eye_init_events(loop);
 

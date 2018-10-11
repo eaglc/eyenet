@@ -143,7 +143,7 @@ static void *
 
 	psize = (size_t) (pool->d.last - (u_char *)pool);
 
-	m = (u_char *)eye_pmemalign(pool, psize, EYE_POOL_ALIGNMENT);
+	m = (u_char *)eye_memalign(EYE_POOL_ALIGNMENT, psize);
 
 	if (m == NULL) {
 		return NULL;

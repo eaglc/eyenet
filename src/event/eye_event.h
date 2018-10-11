@@ -3,6 +3,7 @@
 
 
 #include "eye_core.h"
+#include "eye_event_timer.h"
 
 // events
 #define EYE_EVENT_READ		(1u << 0)
@@ -58,7 +59,7 @@ struct eye_event_s {
     unsigned			accept:1;
     unsigned			cancelable:1;
 
-    eye_rbtree_node_t	timer;
+    eye_rbtree_node_timer_t	timer;
 };
 
 
@@ -107,5 +108,6 @@ extern eye_os_io_t	eye_io;
 
 eye_int_t eye_handle_read_event(eye_event_loop_t *loop, eye_event_t *rev, eye_uint_t flags);
 eye_int_t eye_handle_write_event(eye_event_loop_t *loop, eye_event_t *wev);
+
 
 #endif

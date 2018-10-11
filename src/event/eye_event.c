@@ -48,9 +48,7 @@ eye_int_t eye_handle_read_event(eye_event_loop_t *loop, eye_event_t *rev, eye_ui
 
 eye_int_t eye_handle_write_event(eye_event_loop_t *loop, eye_event_t *wev)
 {
-	printf("hehehehe1111111111111111 \n");
 	if (eye_event_flags & EYE_USE_CLEAR_EVENT) {
-		printf("eye_handle_write_event 22222222222\n");
 		if (!wev->active && !wev->ready) {
 			printf("hehehehe \n");
 			if (eye_add_event(loop, wev, EYE_EVENT_WRITE, EYE_EVENT_CLEAR)
@@ -63,9 +61,6 @@ eye_int_t eye_handle_write_event(eye_event_loop_t *loop, eye_event_t *wev)
 		return EYE_OK;
 
 	} else if (eye_event_flags & EYE_USE_LEVEL_EVENT) {
-
-		printf("hehehehe22222222222222222 \n");
-
 		if (!wev->active && !wev->ready) {
 			if (eye_add_event(loop, wev, EYE_EVENT_WRITE, EYE_EVENT_LEVEL)
 				== EYE_ERROR)

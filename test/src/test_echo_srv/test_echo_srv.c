@@ -1,6 +1,7 @@
 
 
 #include "eye_core.h"
+#include "eye_event.h"
 #include <stdio.h>
 
 

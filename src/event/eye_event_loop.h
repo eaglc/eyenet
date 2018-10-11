@@ -5,7 +5,6 @@
 
 
 #include "eye_core.h"
-#include "eye_event.h"
 
 #ifndef EYE_LOOP_POOL_SIZE
 #define EYE_LOOP_POOL_SIZE		EYE_DEFAULT_POOL_SIZE

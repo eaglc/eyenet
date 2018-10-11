@@ -1,6 +1,7 @@
 
 
 #include "eye_event_timer.h"
+#include "eye_event.h"
 
 static eye_rbtree_node_t	eye_event_timer_sentinel;
 
@@ -58,7 +59,7 @@ void eye_event_expire_timers(eye_rbtree_t *rbt)
 
 		ev = (eye_event_t *)((char *) node - offsetof(eye_event_t, timer));
 
-		eye_rbtree_delete(rbt, &ev->timer);
+		eye_rbtree_delete(rbt, eye_cast(eye_rbtree_node_t *, &ev->timer));
 
 		ev->timer_set = 0;
 		ev->timedout = 1;

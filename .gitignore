@@ -1,4 +1,4 @@
 /proj/linux/*
 !/proj/linux/makefile
 /test/proj/linux/*
-!/test/proj/linux/makefile
+!/test/proj/linux/makefile*
